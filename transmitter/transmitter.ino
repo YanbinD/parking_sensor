@@ -45,9 +45,10 @@ void loop()
   // (OPTIONAL) Read a sensor at the default address
 //  int value = read_the_sensor_example();   //Has been added to save sensor as a value 
   mux_read_sensor();
-  delay(50); // experiment with different value
+  delay(500); // experiment with different value
   for (int i = 0 ; i < SENSOR_COUNT; i++) {
     trans_data(sensorReading[i], i);
+    delay(300); // experiment with different value
   }
 //  trans_data(value);   //Has been added to transmit value as a message to the reciever  
    
@@ -68,7 +69,7 @@ void mux_read_sensor() {
              Serial.print(sensorReading[i]);
              Serial.print("\n");
         }
-        delay(100); // experiment with different value
+        delay(50); // experiment with different value
     }
 }
 
@@ -134,19 +135,32 @@ struct data_packages {
 //////////////////////////////////////////////
 //              Transmit data               //
 //////////////////////////////////////////////
-void trans_data(int msg, int sensor_number){
-  Serial.print("Transmit fcn test ");   //Test to see if the compiler is stepping through the fcn
-  char measurement [10]={0};    //char array
-  itoa(msg, measurement, 10);   //convert int to char array
+char *data = malloc(3); 
+char *dash = "-";
+char *num = malloc(1);
+char *package = malloc(6);
 
-  struct data_packages data_package; 
-  itoa(msg, data_package.measurement, 10);
-  Serial.println(data_package.measurement);
+
+void trans_data(int msg, int sensor_number){
   
-//  Serial.println(sensor_no);    //Test to see if the itoa fcn is working
+  itoa(msg, data, 10);
+  Serial.print("Data ");   //Test to see if the compiler is stepping through the fc
+  Serial.println(data);
   
-  const char *msg2 = measurement;   //Message to be sent  
-  driver.send((uint8_t*)msg2, strlen(msg2));    //Send Message
+  itoa(sensor_number, num, 10);
+  Serial.print("Number"); 
+  Serial.println(data);
+
+  strcpy(package, num);
+  strcat(package, dash);
+  strcat(package, data);
+
+  Serial.print("after"); 
+  Serial.println(package); 
+
+  delay(20);
+  // send out the data package  
+  driver.send((uint8_t*)package, 6);    //Send Message
   driver.waitPacketSent();
 }
 

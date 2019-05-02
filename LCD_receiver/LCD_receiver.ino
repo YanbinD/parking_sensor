@@ -18,19 +18,48 @@ void setup() {
   lcd.backlight();
 }
 
+struct data_packages {
+  char measurement[3];
+  int sensor_number; 
+};
+
+
+
 void loop() {
-  uint8_t buf[10]={0};    //Set buffer equal to message recieved.
+ 
+  uint8_t buf[6];
   uint8_t buflen = sizeof(buf);
-  if(driver.recv(buf, &buflen))   //Valid message ->print
+    
+  if(driver.recv((uint8_t*)buf, &buflen)) 
   {
     int i;
-    Serial.print("Message: ");
+   lcd.print("      ");
+    if (buf[0] == '0') {
+        lcd.setCursor(0,0);
+
+    }
+    else if (buf[0] == '1') {
+        lcd.setCursor(6,0);
+    }
+    else if (buf[0] == '2') {
+        lcd.setCursor(0,1);
+    }
+    else {
+        lcd.setCursor(6,1);
+    }
+    lcd.print((char *) buf);
     Serial.println((char*)buf);
-    lcd.setCursor(0,0); // Sets the location at which subsequent text written to the LCD will be displayed
-    lcd.print("Distance: "); // Prints string "Distance" on the LCD
-    lcd.print((char*)buf); // Prints the distance value from the sensor
-    lcd.print(" XM  "); 
-    delay(500);
+    
+  
+//    Serial.print(" Distance: ");
+//    Serial.println((char*)buf);
+//    lcd.setCursor(0,1); // Sets the location at which subsequent text written to the LCD will be displayed
+//    lcd.print("Distance:"); // Prints string "Distance" on the LCD
+//    lcd.print((char*)buf); 
+//    lcd.print(" cm  ");
+    
+    delay(20);
+//    lcd.clear();
   }
 }
 
