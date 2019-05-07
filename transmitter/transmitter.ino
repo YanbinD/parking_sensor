@@ -10,12 +10,6 @@
 #define SDA_PORT PORTC
 #define I2C_TIMEOUT 100        //Define a timeout of 100 ms -- do not wait for clock stretching longer than this time
 #define SENSOR_COUNT 4         // number of sensors used in the sensor array 
-/*
-I have included a couple of extra useful settings for easy reference.
-//#define I2C_CPUFREQ (F_CPU/8)//Useful if you plan on doing any clock switching
-#define I2C_FASTMODE 1         //Run in fast mode (400 kHz)
-#define I2C_SLOWMODE 1         //If you do not define the mode it will run at 100kHz with this define set to 1 it will run at 25kHz
-*/
 #include <SoftI2CMaster.h>     //You will need to install this library
 #include <RH_ASK.h>   //Has been added for the transmitter to work
 #include <SPI.h>    //not used, but needed for the RH_ASK.h library to work
@@ -24,56 +18,115 @@ RH_ASK driver;    //Object -driver
 byte addresses[SENSOR_COUNT] = {200, 202, 204, 224};
 int sensorReading[SENSOR_COUNT]; 
 
-
 void setup(){
   // Initialize both the serial and I2C bus
   Serial.begin(9600);
   i2c_init();
   // (OPTIONAL) Check each address for a sensor
   address_polling_example();
-  
-  //  default_address_change_example();  
-
-  // Your code here
-  trans_setup();    //Has been added for the transmit debugger
-  
+  trans_setup();    //Has been added for the transmit debugger 
 }
 
 
 void loop()
 {
+   boolean error = 0;
   // (OPTIONAL) Read a sensor at the default address
 //  int value = read_the_sensor_example();   //Has been added to save sensor as a value 
-  mux_read_sensor();
-  delay(500); // experiment with different value
+//  delay(500); // experiment with different value
   for (int i = 0 ; i < SENSOR_COUNT; i++) {
-    trans_data(sensorReading[i], i);
-    delay(300); // experiment with different value
+    error = start_sensor(addresses[i]);
+    if (!error) {
+      sensorReading[i] = read_sensor(addresses[i])  + (i+1) * 1000;
+      // Serial.print(i);
+      // Serial.print(" : ");
+      // Serial.print(sensorReading[i]);
+      
+      // Serial.print("\n");
+      delay(100);
+      trans_data(sensorReading[i], i);
+      delay(200); // experiment with different value
   }
 //  trans_data(value);   //Has been added to transmit value as a message to the reciever  
-   
-  // Your code here
+}
 }
 
 
-void mux_read_sensor() {
-    boolean error = 0;
-    int range; 
+// void mux_read_sensor() {
+//     boolean error = 0;
+//     int range; 
     
-    for (int i = 0; i < SENSOR_COUNT; i++) {
-        error = start_sensor(addresses[i]);
-        if (!error) {
-            sensorReading[i] = read_sensor(addresses[i]);
-             Serial.print(i);
-             Serial.print(" : ");
-             Serial.print(sensorReading[i]);
-             Serial.print("\n");
-        }
-        delay(50); // experiment with different value
-    }
+//     for (int i = 0; i < SENSOR_COUNT; i++) {
+//         error = start_sensor(addresses[i]);
+//         if (!error) {
+//             sensorReading[i] = read_sensor(addresses[i])  + (i+1) * 1000;
+//             Serial.print(i);
+//             Serial.print(" : ");
+//             Serial.print(sensorReading[i]);
+//             Serial.print("\n");
+//         }
+//         delay(150); // experiment with different value
+//     }
+// }
+
+
+//=================== Wireless section ===================
+// data pin to pin12
+//////////////////////////////////////////////
+//               Transmitter Setup          //
+//////////////////////////////////////////////
+void trans_setup(){
+  //Serial.begin(9600);   //Debugger- no need for double Serial.begin(9600)
+  if(!driver.init())
+    Serial.println("init failed");
 }
 
 
+//////////////////////////////////////////////
+//              Transmit data               //
+//////////////////////////////////////////////
+void trans_data(int msg, int sensor_number){
+
+  char measurement [4]={0};    //char array
+  itoa(msg, measurement, 10);
+  Serial.print("Data ");   //Test to see if the compiler is stepping through the fc
+  Serial.println(measurement);
+
+  const char *msg2 = measurement;   //Message to be sent  
+  driver.send((uint8_t*)msg2, strlen(msg2));    //Send Message
+  driver.waitPacketSent();
+  delay(50);
+}
+
+
+////////////////////////////////////////////////////////////////
+// Code Example: Poll all possible addresses to find a sensor //
+////////////////////////////////////////////////////////////////
+void address_polling_example(){
+  boolean error = 0;  //Create a bit to check for catch errors as needed.
+  int range = 0;
+  Serial.println("Polling addresses...");
+ 
+  //Walk through all possible addresses and check for a device that can receive the range command and will
+  //    return two bytes.
+  for (byte i=2; i!=0; i+=2){   //start at 2 and count up by 2 until wrapping to 0. Checks all addresses (2-254) except 0 (which cannot be used by a device)
+    error = 0;
+    error = start_sensor(i);    //Start the sensor and collect any error codes.
+    if (!error){                //If you had an error starting the sensor there is little point in reading it.
+      delay(100);
+      range = read_sensor(i);   //reading the sensor will return an integer value -- if this value is 0 there was an error
+      Serial.println(i);
+      if (range != 0){
+        Serial.print("Device found at:");Serial.print(i);Serial.print(" Reported value of:");Serial.println(range);
+      }  
+    }
+    else{
+      Serial.print("Couldn't start:");Serial.println(i);
+    }
+  }
+
+  Serial.println("Address polling complete.");
+}
 ///////////////////////////////////////////////////
 // Function: Start a range reading on the sensor //
 ///////////////////////////////////////////////////
@@ -111,85 +164,4 @@ int read_sensor(byte bit8address){
   else{
     return range;
   }
-}
-
-
-//=================== Wireless section ===================
-// data pin to pin11
-//////////////////////////////////////////////
-//               Transmitter Setup          //
-//////////////////////////////////////////////
-//
-void trans_setup(){
-  //Serial.begin(9600);   //Debugger- no need for double Serial.begin(9600)
-  if(!driver.init())
-    Serial.println("init failed");
-}
-
-struct data_packages {
-  char measurement[3];
-  int sensor_number; 
-};
-
-
-//////////////////////////////////////////////
-//              Transmit data               //
-//////////////////////////////////////////////
-char *data = malloc(3); 
-char *dash = "-";
-char *num = malloc(1);
-char *package = malloc(6);
-
-
-void trans_data(int msg, int sensor_number){
-  
-  itoa(msg, data, 10);
-  Serial.print("Data ");   //Test to see if the compiler is stepping through the fc
-  Serial.println(data);
-  
-  itoa(sensor_number, num, 10);
-  Serial.print("Number"); 
-  Serial.println(data);
-
-  strcpy(package, num);
-  strcat(package, dash);
-  strcat(package, data);
-
-  Serial.print("after"); 
-  Serial.println(package); 
-
-  delay(20);
-  // send out the data package  
-  driver.send((uint8_t*)package, 6);    //Send Message
-  driver.waitPacketSent();
-}
-
-
-////////////////////////////////////////////////////////////////
-// Code Example: Poll all possible addresses to find a sensor //
-////////////////////////////////////////////////////////////////
-void address_polling_example(){
-  boolean error = 0;  //Create a bit to check for catch errors as needed.
-  int range = 0;
-  Serial.println("Polling addresses...");
- 
-  //Walk through all possible addresses and check for a device that can receive the range command and will
-  //    return two bytes.
-  for (byte i=2; i!=0; i+=2){   //start at 2 and count up by 2 until wrapping to 0. Checks all addresses (2-254) except 0 (which cannot be used by a device)
-    error = 0;
-    error = start_sensor(i);    //Start the sensor and collect any error codes.
-    if (!error){                //If you had an error starting the sensor there is little point in reading it.
-      delay(100);
-      range = read_sensor(i);   //reading the sensor will return an integer value -- if this value is 0 there was an error
-      Serial.println(i);
-      if (range != 0){
-        Serial.print("Device found at:");Serial.print(i);Serial.print(" Reported value of:");Serial.println(range);
-      }  
-    }
-    else{
-      Serial.print("Couldn't start:");Serial.println(i);
-    }
-  }
-
-  Serial.println("Address polling complete.");
 }
