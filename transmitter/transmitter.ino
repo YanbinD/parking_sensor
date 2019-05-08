@@ -43,9 +43,9 @@ void loop()
       // Serial.print(sensorReading[i]);
       
       // Serial.print("\n");
-      delay(100);
+      // delay(100);
       trans_data(sensorReading[i], i);
-      delay(200); // experiment with different value
+      // delay(10); // experiment with different value
   }
 //  trans_data(value);   //Has been added to transmit value as a message to the reciever  
 }
@@ -95,7 +95,7 @@ void trans_data(int msg, int sensor_number){
   const char *msg2 = measurement;   //Message to be sent  
   driver.send((uint8_t*)msg2, strlen(msg2));    //Send Message
   driver.waitPacketSent();
-  delay(50);
+  delay(60);
 }
 
 

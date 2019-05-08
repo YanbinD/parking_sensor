@@ -31,7 +31,7 @@ void loop()
     {
         int i;
         // Message with a good checksum received, dump it.
-        Serial.print("Message: ");
+        // Serial.print("Message: ");
         int reading = atoi(buf);
         int s_reading = reading % 1000;
         int s_number = reading / 1000;
@@ -40,26 +40,20 @@ void loop()
         Serial.println("s_reading");
         Serial.println(s_reading);
 
-        if (s_reading > 140)
-        {
-            // green
-            Serial.println("==> 140");
+        if (s_reading < 25) {
+            //red
+            setColor(255, 0, 0); 
+        }
+        else if (s_reading < 35) {
+            //dark orange
+            setColor(235, 255,0);
+        }
+        else if (s_reading < 60) {
+            //yellow
+            setColor(175, 252, 0);
+        }
+        else {
             setColor(0, 255, 0);
-        }
-        else if (s_reading > 100)
-        {
-            // yellow
-            Serial.println("==> 100");
-            setColor(205, 255, 0);
-        }
-        else if (s_reading > 50)
-        {
-            // organge
-            Serial.println("==> 50");
-            setColor(255, 128, 0);
-        } else {
-            Serial.println("< 50");
-            setColor(255, 0, 0);
         }
         reading_to_led(s_number);
     }
@@ -87,21 +81,25 @@ void reading_to_led(int s_number)
     {
         // Serial.println("===>sensor_0");
         digitalWrite(SENSOR_0, HIGH);
+        // delay(40);
     }
     else if (s_number == 2)
     {
         // Serial.println("===>sensor_1");
         digitalWrite(SENSOR_1, HIGH);
+        // delay(40);
     }
     else if (s_number == 3)
     {
         // Serial.println("==>sensor_2");
         digitalWrite(SENSOR_2, HIGH);
+        // delay(40);
     }
     else if (s_number == 4)
     {
         // Serial.println("===>sensor_3");
         digitalWrite(SENSOR_3, HIGH);
+        // delay(40);
     }
 }
 
